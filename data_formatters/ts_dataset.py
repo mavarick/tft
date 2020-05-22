@@ -6,7 +6,7 @@ class TSDataset(Dataset):
     ## Mostly adapted from original TFT Github, data_formatters
     def __init__(self,id_col, static_cols, time_col, input_cols,
                  target_col, time_steps, max_samples,
-                 input_size, num_encoder_steps,num_static,
+                 input_size, num_encoder_steps,
                  output_size, data):
         
         self.time_steps = time_steps
@@ -32,7 +32,7 @@ class TSDataset(Dataset):
         self.inputs = np.zeros((max_samples, self.time_steps, self.input_size))
         self.outputs = np.zeros((max_samples, self.time_steps, self.output_size))
         self.time = np.empty((max_samples, self.time_steps, 1))
-        self.identifiers = np.empty((max_samples,self.time_steps, num_static))
+        self.identifiers = np.empty((max_samples,self.time_steps, len(static_cols)))
 
         if max_samples > 0 and len(valid_sampling_locations) > max_samples:
             print('Extracting {} samples...'.format(max_samples))
