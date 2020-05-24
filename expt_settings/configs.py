@@ -26,7 +26,8 @@ import data_formatters.electricity
 import data_formatters.favorita
 import data_formatters.traffic
 import data_formatters.volatility
-
+import data_formatters.m4
+import data_formatters.m5
 
 class ExperimentConfig(object):
   """Defines experiment configs and paths to outputs.
@@ -42,7 +43,7 @@ class ExperimentConfig(object):
       experiment.
   """
 
-  default_experiments = ['volatility', 'electricity', 'traffic', 'favorita']
+  default_experiments = ['volatility', 'electricity', 'traffic', 'favorita', 'm4', 'm5']
 
   def __init__(self, experiment='volatility', root_folder=None):
     """Creates configs based on default experiment chosen.
@@ -81,7 +82,9 @@ class ExperimentConfig(object):
         'volatility': 'formatted_omi_vol.csv',
         'electricity': 'hourly_electricity.csv',
         'traffic': 'hourly_data.csv',
-        'favorita': 'favorita_consolidated.csv'
+        'favorita': 'favorita_consolidated.csv',
+        'm4': 'm4.csv',
+        'm5': 'm5.csv'
     }
 
     return os.path.join(self.data_folder, csv_map[self.experiment])
@@ -102,7 +105,9 @@ class ExperimentConfig(object):
         'volatility': data_formatters.volatility.VolatilityFormatter,
         'electricity': data_formatters.electricity.ElectricityFormatter,
         'traffic': data_formatters.traffic.TrafficFormatter,
-        'favorita': data_formatters.favorita.FavoritaFormatter
+        'favorita': data_formatters.favorita.FavoritaFormatter,
+        'm4': data_formatters.m4.M4Formatter,
+        'm5': data_formatters.m5.M5Formatter
     }
 
     return data_formatter_class[self.experiment]()
