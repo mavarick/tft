@@ -322,12 +322,12 @@ class LSTMCombineAndMask(nn.Module):
         for i in range(self.num_inputs):
             self.single_variable_grns.append(GatedResidualNetwork(self.hidden_layer_size, self.hidden_layer_size, None, self.dropout_rate, use_time_distributed=use_time_distributed, return_gate=False, batch_first=batch_first))
 
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=2)
 
     def forward(self, embedding, additional_context=None):
         # Add temporal features
         _, time_steps, embedding_dim, num_inputs = list(embedding.shape)
-        
+                
         flattened_embedding = torch.reshape(embedding,
                       [-1, time_steps, embedding_dim * num_inputs])
 
@@ -348,7 +348,7 @@ class LSTMCombineAndMask(nn.Module):
             )
 
         transformed_embedding = torch.stack(trans_emb_list, dim=-1)
-
+        
         combined = transformed_embedding*sparse_weights
         
         temporal_ctx = combined.sum(dim=-1)
@@ -375,7 +375,7 @@ class StaticCombineAndMask(nn.Module):
         for i in range(self.num_static):
             self.single_variable_grns.append(GatedResidualNetwork(self.hidden_layer_size, self.hidden_layer_size, None, self.dropout_rate, use_time_distributed=False, return_gate=False, batch_first=batch_first))
 
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, embedding, additional_context=None):
         # Add temporal features
@@ -386,7 +386,7 @@ class StaticCombineAndMask(nn.Module):
         else:
             sparse_weights = self.flattened_grn(flattened_embedding)
 
-        sparse_weights = self.softmax(sparse_weights).unsqueeze(-1)
+        sparse_weights = self.softmax(sparse_weights).unsqueeze(2)
 
         trans_emb_list = []
         for i in range(self.num_static):
@@ -443,8 +443,8 @@ class TFT(nn.Module):
         self.num_heads = int(params['num_heads'])
         self.batch_first = True
         self.num_static = len(self._static_input_loc)
-        self.num_inputs = 5#len(self._known_regular_input_idx) + self.output_size
-        self.num_inputs_decoder = 4#len(self._known_regular_input_idx)
+        self.num_inputs = len(self._known_regular_input_idx) + self.output_size
+        self.num_inputs_decoder = len(self._known_regular_input_idx)
 
         # Serialisation options
         # self._temp_folder = os.path.join(params['model_folder'], 'tmp')
@@ -468,7 +468,8 @@ class TFT(nn.Module):
           self.hidden_layer_size for i, size in enumerate(self.category_counts)
         ]
 
-
+        print("num_categorical_variables")
+        print(num_categorical_variables)
         self.embeddings = nn.ModuleList()
         for i in range(num_categorical_variables):
             embedding = nn.Embedding(self.category_counts[i], embedding_sizes[i])
@@ -612,7 +613,7 @@ class TFT(nn.Module):
 
     def get_tft_embeddings(self, all_inputs):
         time_steps = self.time_steps
-
+        
         num_categorical_variables = len(self.category_counts)
         num_regular_variables = self.input_size - num_categorical_variables
 
@@ -625,7 +626,7 @@ class TFT(nn.Module):
               all_inputs[:, :, num_regular_variables:]
 
         embedded_inputs = [
-            self.embeddings[i](categorical_inputs[Ellipsis, i].long())
+            self.embeddings[i](categorical_inputs[:,:, i].long())
             for i in range(num_categorical_variables)
         ]
 
@@ -691,7 +692,7 @@ class TFT(nn.Module):
 
         unknown_inputs, known_combined_layer, obs_inputs, static_inputs \
             = self.get_tft_embeddings(all_inputs)
-
+        
         # Isolate known and observed historical inputs.
         if unknown_inputs is not None:
             historical_inputs = torch.cat([
@@ -705,6 +706,7 @@ class TFT(nn.Module):
                   obs_inputs[:, :encoder_steps, :]
               ], dim=-1)
 
+#         print(historical_inputs)
         # Isolate only known future inputs.
         future_inputs = known_combined_layer[:, encoder_steps:, :]
 
@@ -713,7 +715,6 @@ class TFT(nn.Module):
         static_context_enrichment = self.static_context_enrichment_grn(static_encoder)
         static_context_state_h = self.static_context_state_h_grn(static_encoder)
         static_context_state_c = self.static_context_state_c_grn(static_encoder)
-
         historical_features, historical_flags, _ = self.historical_lstm_combine_and_mask(historical_inputs, static_context_variable_selection)
         future_features, future_flags, _ = self.future_lstm_combine_and_mask(future_inputs, static_context_variable_selection)
 
@@ -721,7 +722,6 @@ class TFT(nn.Module):
         future_lstm, _ = self.lstm_decoder(future_features, (state_h, state_c))
 
         lstm_layer = torch.cat([history_lstm, future_lstm], dim=1)
-
         # Apply gated skip connection
         input_embeddings = torch.cat([historical_features, future_features], dim=1)
 

@@ -10,6 +10,7 @@ from data_formatters import utils
 import torch.optim as optim
 import torch
 from tqdm import tqdm
+import pickle
 
 importlib.reload(tft_model)
 importlib.reload(utils)
@@ -17,39 +18,64 @@ importlib.reload(utils)
 ExperimentConfig = expt_settings.configs.ExperimentConfig
 
 config = ExperimentConfig('m5', 'outputs')
-data_formatter = config.make_data_formatter()
 
+with open('data_formatter.pkl', 'rb') as input:
+    data_formatter = pickle.load(input)
 
-print("*** Training from defined parameters for {} ***".format('m5'))
-data_csv_path = '/nfs/homedirs/keskiner/thesis/m5_tft_data.csv'
-print("Loading & splitting data...")
-raw_data = pd.read_csv(data_csv_path, index_col=0)
-print("Data loaded...")
-train, valid, test = data_formatter.split_data(raw_data)
-train_samples, valid_samples = data_formatter.get_num_samples_for_calibration()
+# data_formatter = config.make_data_formatter()
+#
+#
+# print("*** Training from defined parameters for {} ***".format('m5'))
+# data_csv_path = '/home/arda/Desktop/thesis/m5_tft_data.csv'
+# print("Loading & splitting data...")
+# raw_data = pd.read_csv(data_csv_path, index_col=0)
+# print("Data loaded...")
+# train, valid, test = data_formatter.split_data(raw_data)
+# train_samples, valid_samples = data_formatter.get_num_samples_for_calibration()
+#
+# with open('train.pkl', 'wb') as output:  # Overwrites any existing file.
+#     pickle.dump(train, output, pickle.HIGHEST_PROTOCOL)
+#
+# with open('valid.pkl', 'wb') as output:  # Overwrites any existing file.
+#     pickle.dump(valid, output, pickle.HIGHEST_PROTOCOL)
+#
+# with open('test.pkl', 'wb') as output:  # Overwrites any existing file.
+#     pickle.dump(test, output, pickle.HIGHEST_PROTOCOL)
 
 # Sets up default params
 fixed_params = data_formatter.get_experiment_params()
 params = data_formatter.get_default_model_params()
+
+# with open('data_formatter.pkl', 'wb') as output:  # Overwrites any existing file.
+#     pickle.dump(data_formatter, output, pickle.HIGHEST_PROTOCOL)
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 fixed_params.update(params)
 fixed_params['batch_first'] = True
 fixed_params['name'] = 'test'
 fixed_params['device'] = device
+fixed_params['minibatch_size'] = 128
 
-max_samples = 64 * 1000 * 10
-ds = ts_dataset.TSDataset(fixed_params, max_samples, train)
+max_samples = 512 * 10
+# ds = ts_dataset.TSDataset(fixed_params, max_samples, train)
+#
+# with open('ts_dataset.pkl', 'wb') as output:  # Overwrites any existing file.
+#     pickle.dump(ds, output, pickle.HIGHEST_PROTOCOL)
 
-batch_size=64
+with open('ts_dataset.pkl', 'rb') as input:
+    ds = pickle.load(input)
+
+batch_size=128
 loader = DataLoader(ds, batch_size=batch_size, num_workers=2, shuffle=True)
 
-torch.save(loader, 'm5_dataloader.pth', pickle_protocol=4)
+with open('m5_dataloader.pkl', 'wb') as output:
+    pickle.dump(loader, output, pickle.HIGHEST_PROTOCOL)
 
 model = tft_model.TFT(fixed_params).to(device)
 
 q_loss_func = tft_model.QuantileLoss([0.1,0.5,0.9])
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 model.train()
 epochs=100
