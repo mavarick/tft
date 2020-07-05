@@ -15,6 +15,7 @@ class ScaledDotProductAttention(nn.Module):
 
         self.dropout = nn.Dropout(attn_dropout)
         self.activation = nn.Softmax(dim=-1)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, q, k, v, mask):
         """Applies scaled dot product attention.
@@ -28,10 +29,10 @@ class ScaledDotProductAttention(nn.Module):
         Returns:
           Tuple of (layer outputs, attention weights)
         """
-        temper = torch.sqrt(torch.tensor(k.shape[-1], dtype=torch.float))
+        temper = torch.sqrt(torch.tensor(k.shape[-1], dtype=torch.float).to(self.device))
         attn = torch.bmm(q,k.permute(0,2,1)) # shape=(batch, q, k)
         if mask is not None:
-            mmask = (-1e+9) * (1. - torch.tensor(mask, dtype=torch.float)) # setting to infinity
+            mmask = (-1e+9) * (1. - torch.tensor(mask, dtype=torch.float).to(self.device)) # setting to infinity
             attn = torch.add(attn, mmask)
         attn = self.activation(attn)
         attn = self.dropout(attn)
