@@ -168,6 +168,13 @@ class GenericDataFormatter(abc.ABC):
         if tup[2] not in {InputTypes.ID, InputTypes.TIME}
     ]
 
+  def _get_input_decoder_columns(self):
+      return [
+          tup[0]
+          for tup in self.get_column_definition()
+          if tup[2] not in {InputTypes.ID, InputTypes.TIME, InputTypes.TARGET, InputTypes.OBSERVED_INPUT}
+      ]
+
   def _get_tft_input_indices(self):
     """Returns the relevant indexes and input sizes required by TFT."""
 
@@ -192,6 +199,15 @@ class GenericDataFormatter(abc.ABC):
     real_inputs = _extract_tuples_from_data_type(DataTypes.REAL_VALUED,
                                                  column_definition)
 
+    #print("real_inputs:")
+    #print(real_inputs)
+    #print("categorical_inputs:")
+    #print(categorical_inputs)
+
+    # encoder的输入大小，包括三部分：1，离散known；2，连续known；3，observe
+    inputs_encoder = self._get_input_columns()
+    inputs_decoder = self._get_input_decoder_columns()
+
     locations = {
         'input_size':
             len(self._get_input_columns()),
@@ -209,9 +225,18 @@ class GenericDataFormatter(abc.ABC):
         'known_categorical_inputs':
             _get_locations({InputTypes.STATIC_INPUT, InputTypes.KNOWN_INPUT},
                            categorical_inputs),
+        'inputs_encoder': inputs_encoder,
+        'inputs_decoder': inputs_decoder,
+        # 'known_regular_inputs':
+        #     _get_locations({InputTypes.KNOWN_INPUT},
+        #                    real_inputs),
+        # 'known_categorical_inputs':
+        #     _get_locations({InputTypes.KNOWN_INPUT},
+        #                    categorical_inputs),
     }
 
     return locations
+
 
   def get_experiment_params(self):
     """Returns fixed model parameters for experiments."""

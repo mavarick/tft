@@ -16,6 +16,9 @@ from layers.static_combine_and_mask import StaticCombineAndMask
 from layers.time_distributed import TimeDistributed
 from layers.interpretable_multi_head_attention import InterpretableMultiHeadAttention
 
+from torch.utils.data import DataLoader,Dataset, Subset
+
+
 class TFT(nn.Module):
     def __init__(self, raw_params):
         super(TFT, self).__init__()
@@ -54,11 +57,21 @@ class TFT(nn.Module):
         self.num_encoder_steps = int(params['num_encoder_steps'])
         self.num_stacks = int(params['stack_size'])
         self.num_heads = int(params['num_heads'])
+        self.inputs_encoder = params['inputs_encoder']
+        self.inputs_decoder = params['inputs_decoder']
+
         self.batch_first = True
         self.num_static = len(self._static_input_loc)
-        self.num_inputs = len(self._known_regular_input_idx) + self.output_size
-        self.num_inputs_decoder = len(self._known_regular_input_idx)
+        #self.num_inputs = len(self._known_regular_input_idx) + len(self._known_categorical_input_idx) + self.output_size
+        #self.num_inputs = len(self._known_regular_input_idx) + self.output_size
+        #self.num_inputs_decoder = len(self._known_regular_input_idx)
+        #self.num_inputs = len(self._known_regular_input_idx) + len(self._known_categorical_input_idx) + self.output_size
+        #self.num_inputs_decoder = len(self._known_regular_input_idx) + len(self._known_categorical_input_idx)
+        self.num_inputs = len(self.inputs_encoder) - self.num_static
+        self.num_inputs_decoder = len(self.inputs_decoder) - self.num_static
 
+        print("_known_regular_input_idx:{}, _known_categorical_input_idx:{}, num_static: {}, num_inputs:{}".format(
+            self._known_regular_input_idx, self._known_categorical_input_idx, self.num_static, self.num_inputs))
         # Serialisation options
         # self._temp_folder = os.path.join(params['model_folder'], 'tmp')
         # self.reset_temp_folder()
@@ -131,6 +144,9 @@ class TFT(nn.Module):
                 use_time_distributed=False,
                 return_gate=False,
                 batch_first=self.batch_first)
+        print("input_size:{}, num_inputs:{}, hidden_layer_size:{}".format(
+            self.num_encoder_steps, self.num_inputs, self.hidden_layer_size
+        ))
         self.historical_lstm_combine_and_mask = LSTMCombineAndMask(
                 input_size=self.num_encoder_steps,
                 num_inputs=self.num_inputs,
@@ -216,19 +232,27 @@ class TFT(nn.Module):
         
         num_categorical_variables = len(self.category_counts)
         num_regular_variables = self.input_size - num_categorical_variables
+        # 5 - 1 = 4
 
         embedding_sizes = [
           self.hidden_layer_size for i, size in enumerate(self.category_counts)
         ]
+        #embedding_sizes = [160]
 
+        ## 这个地方就要求，recular_inputs全部放在category之前, TODO
         regular_inputs, categorical_inputs \
             = all_inputs[:, :, :num_regular_variables], \
               all_inputs[:, :, num_regular_variables:]
+
+        regular_inputs = regular_inputs.float()
 
         embedded_inputs = [
             self.embeddings[i](categorical_inputs[:,:, i].long())
             for i in range(num_categorical_variables)
         ]
+
+        #print("num_regular_variables:{}, regular_inputs:{}, categorical_inputs:{}".format(
+        #    num_regular_variables, regular_inputs.shape, categorical_inputs.shape))
 
         # Static inputs
         if self._static_input_loc:
@@ -243,6 +267,7 @@ class TFT(nn.Module):
             static_inputs = None
 
         # Targets
+        ## 这个地方问题是为什么要加一个time_varying_embedding_layer ??
         obs_inputs = torch.stack([
             self.time_varying_embedding_layer(regular_inputs[Ellipsis, i:i + 1].float())
             for i in self._input_obs_loc
@@ -292,22 +317,33 @@ class TFT(nn.Module):
 
         unknown_inputs, known_combined_layer, obs_inputs, static_inputs \
             = self.get_tft_embeddings(all_inputs)
-        
+        # 这个地方返回分别对应：未来不知道，未来知道, labels, 静态特征
+        print("all_inputs:{}, unknown_inputs:{}, known_combined_layer:{}, obs_inputs:{}, static_inputs:{}".format(
+           all_inputs.shape,
+           None if unknown_inputs is None else unknown_inputs.shape, known_combined_layer.shape, obs_inputs.shape, static_inputs.shape
+        ))
+
         # Isolate known and observed historical inputs.
+        #print("unknown_inputs:", unknown_inputs)
+
         if unknown_inputs is not None:
             historical_inputs = torch.cat([
+                #static_inputs[:, :encoder_steps, :],
                 unknown_inputs[:, :encoder_steps, :],
                 known_combined_layer[:, :encoder_steps, :],
                 obs_inputs[:, :encoder_steps, :]
             ], dim=-1)
         else:
             historical_inputs = torch.cat([
+                  #static_inputs[:, :encoder_steps, :],
                   known_combined_layer[:, :encoder_steps, :],
                   obs_inputs[:, :encoder_steps, :]
               ], dim=-1)
 
         # Isolate only known future inputs.
         future_inputs = known_combined_layer[:, encoder_steps:, :]
+
+        #print("historical_inputs:{}, future_inputs:{}".format(historical_inputs.shape, future_inputs.shape))
 
         static_encoder, static_weights = self.static_combine_and_mask(static_inputs)
         static_context_variable_selection = self.static_context_variable_selection_grn(static_encoder)

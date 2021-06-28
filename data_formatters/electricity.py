@@ -186,7 +186,9 @@ class ElectricityFormatter(GenericDataFormatter):
 
     # Format categorical inputs
     for col in categorical_inputs:
-      string_df = df[col].apply(str)
+      #string_df = df[col].apply(str)
+      # bug！在结果inverse_transform的时候会使得离散部分逆转换出问题!
+      string_df = output[col].apply(str)
       output[col] = self._cat_scalers[col].transform(string_df)
 
     return output

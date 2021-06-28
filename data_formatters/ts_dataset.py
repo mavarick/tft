@@ -3,6 +3,7 @@ import data_formatters.utils as utils
 from data_formatters.base import InputTypes
 from torch.utils.data import Dataset
 import numpy as np
+import time
 
 class TSDataset(Dataset):
     ## Mostly adapted from original TFT Github, data_formatters
@@ -36,6 +37,7 @@ class TSDataset(Dataset):
         self.time = np.empty((max_samples, self.time_steps, 1), dtype=object)
         self.identifiers = np.empty((max_samples, self.time_steps, 1), dtype=object)
         print('# available segments={}'.format(len(valid_sampling_locations)))
+
         if max_samples > 0 and len(valid_sampling_locations) > max_samples:
             print('Extracting {} samples...'.format(max_samples))
             ranges = [
@@ -56,9 +58,10 @@ class TSDataset(Dataset):
             if tup[2] not in {InputTypes.ID, InputTypes.TIME}
         ]
 
+        st = time.time()
         for i, tup in enumerate(ranges):
             if ((i + 1) % 1000) == 0:
-                print(i + 1, 'of', max_samples, 'samples done...')
+                print(i + 1, 'of', max_samples, 'samples done..., {}'.format(time.time() - st))
             identifier, start_idx = tup
             sliced = split_data_map[identifier].iloc[start_idx -
                                                     self.time_steps:start_idx]
@@ -67,6 +70,7 @@ class TSDataset(Dataset):
             self.outputs[i, :, :] = sliced[[target_col]]
             self.time[i, :, 0] = sliced[time_col]
             self.identifiers[i, :, 0] = sliced[id_col]
+        print("total time used: {}".format(time.time() - st))
 
         self.sampled_data = {
             'inputs': self.inputs,
