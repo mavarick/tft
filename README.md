@@ -2,6 +2,8 @@
 
 **NOTICE:** based on google tft's pytorch implemetation [see: https://github.com/akeskiner/Temporal_Fusion_Transform], which contains some error and bugs!
 
+--------
+
 Pytorch Implementation of Google's TFT
 
 Original Github link: https://github.com/google-research/google-research/tree/master/tft

@@ -45,7 +45,7 @@ class TSDataset(Dataset):
                     len(valid_sampling_locations), max_samples, replace=False)
             ]
         else:
-            print('Max samples={} exceeds # available segments={}'.format(
+            print('Max samples={} is no used and use total valid samples: segments={}'.format(
                 max_samples, len(valid_sampling_locations)))
             ranges = valid_sampling_locations
 

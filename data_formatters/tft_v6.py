@@ -271,4 +271,5 @@ class TFTv6(GenericDataFormatter):
     Returns:
       Tuple of (training samples, validation samples)
     """
-    return 450000, 50000
+    raise NotImplementedError
+    #return 450000, 50000
