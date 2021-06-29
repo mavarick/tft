@@ -87,7 +87,8 @@ class TFTv6(GenericDataFormatter):
 
     index = df['time_idx']
     train = df.loc[index <= valid_boundary+pred_days]
-    valid = df.loc[(index >= valid_boundary - his_days +1) & (index <= valid_boundary+pred_days)]
+    #valid = df.loc[(index >= valid_boundary - his_days +1) & (index <= valid_boundary+pred_days)]
+    valid = df.loc[0:0]
     test = df.loc[index >= test_boundary-his_days +1]
 
     self.set_scalers(train)
@@ -192,6 +193,9 @@ class TFTv6(GenericDataFormatter):
         sliced_copy[real_inputs] = self._real_scalers[identifier].transform(
             sliced_copy[real_inputs].values)
         df_list.append(sliced_copy)
+
+    if not df_list:
+        return pd.DataFrame()
 
     output = pd.concat(df_list, axis=0)
 

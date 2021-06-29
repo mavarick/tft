@@ -32,10 +32,6 @@ class TSDataset(Dataset):
                 ]
             split_data_map[identifier] = df
 
-        self.inputs = np.zeros((max_samples, self.time_steps, self.input_size))
-        self.outputs = np.zeros((max_samples, self.time_steps, self.output_size))
-        self.time = np.empty((max_samples, self.time_steps, 1), dtype=object)
-        self.identifiers = np.empty((max_samples, self.time_steps, 1), dtype=object)
         print('# available segments={}'.format(len(valid_sampling_locations)))
 
         if max_samples > 0 and len(valid_sampling_locations) > max_samples:
@@ -48,6 +44,12 @@ class TSDataset(Dataset):
             print('Max samples={} is no used and use total valid samples: segments={}'.format(
                 max_samples, len(valid_sampling_locations)))
             ranges = valid_sampling_locations
+            max_samples = len(valid_sampling_locations)
+
+        self.inputs = np.zeros((max_samples, self.time_steps, self.input_size))
+        self.outputs = np.zeros((max_samples, self.time_steps, self.output_size))
+        self.time = np.empty((max_samples, self.time_steps, 1), dtype=object)
+        self.identifiers = np.empty((max_samples, self.time_steps, 1), dtype=object)
 
         id_col = self._get_single_col_by_type(InputTypes.ID)
         time_col = self._get_single_col_by_type(InputTypes.TIME)
