@@ -44,6 +44,16 @@ class TFTv6(GenericDataFormatter):
       ('category2_id', DataTypes.CATEGORICAL, InputTypes.STATIC_INPUT),
       ('category3_id', DataTypes.CATEGORICAL, InputTypes.STATIC_INPUT),
       ('category4_id', DataTypes.CATEGORICAL, InputTypes.STATIC_INPUT),
+      ('sku_type', DataTypes.CATEGORICAL, InputTypes.STATIC_INPUT),
+      ('package_type', DataTypes.CATEGORICAL, InputTypes.STATIC_INPUT),
+
+      # 这个最好分桶
+      ('real_guarantee_period', DataTypes.CATEGORICAL, InputTypes.KNOWN_INPUT),
+
+      ('band', DataTypes.CATEGORICAL, InputTypes.OBSERVED_INPUT),
+      ('is_hd', DataTypes.CATEGORICAL, InputTypes.OBSERVED_INPUT),
+      ('is_hs', DataTypes.CATEGORICAL, InputTypes.OBSERVED_INPUT),
+      ('is_ps', DataTypes.CATEGORICAL, InputTypes.OBSERVED_INPUT),
 
       #('traffic_index', DataTypes.REAL_VALUED, InputTypes.OBSERVED_INPUT),
       ('traffic_index', DataTypes.REAL_VALUED, InputTypes.KNOWN_INPUT),
@@ -57,6 +67,8 @@ class TFTv6(GenericDataFormatter):
       ('is_seckill', DataTypes.CATEGORICAL, InputTypes.KNOWN_INPUT),
       ('promos_discount', DataTypes.REAL_VALUED, InputTypes.KNOWN_INPUT),
       ('sell_price', DataTypes.REAL_VALUED, InputTypes.KNOWN_INPUT),
+      ('original_sell_price', DataTypes.REAL_VALUED, InputTypes.KNOWN_INPUT),
+      ('original_sell_price_sparse', DataTypes.CATEGORICAL, InputTypes.KNOWN_INPUT),
   ]
 
   def __init__(self):
@@ -91,17 +103,22 @@ class TFTv6(GenericDataFormatter):
     valid = df.loc[0:0]
     test = df.loc[index >= test_boundary-his_days +1]
 
-    self.set_scalers(train)
+    self.set_scalers(train, df)
 
     print("train:{}, valid:{}, test:{}".format(train.shape, valid.shape, test.shape))
     return (self.transform_inputs(data) for data in [train, valid, test])
 
-  def set_scalers(self, df):
+  def set_scalers(self, df, total_df=None):
     """Calibrates scalers using the data supplied.
 
     Args:
       df: Data to use to calibrate scalers.
+
+      total_df: 对离散特征采用total_df, 不然会导致train里面有，test里面没有的情况
     """
+    if total_df is None:
+        total_df = df
+
     print('Setting scalers with training data...')
 
     column_definitions = self.get_column_definition()
@@ -141,7 +158,7 @@ class TFTv6(GenericDataFormatter):
     num_classes = []
     for col in categorical_inputs:
       # Set all to str so that we don't have mixed integer/string columns
-      srs = df[col].apply(str)
+      srs = total_df[col].apply(str)
       categorical_scalers[col] = sklearn.preprocessing.LabelEncoder().fit(
           srs.values)
       num_classes.append(srs.nunique())
