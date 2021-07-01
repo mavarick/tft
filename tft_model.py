@@ -245,6 +245,7 @@ class TFT(nn.Module):
               all_inputs[:, :, num_regular_variables:]
 
         regular_inputs = regular_inputs.float()
+        categorical_inputs = categorical_inputs.long()
 
         embedded_inputs = [
             self.embeddings[i](categorical_inputs[:,:, i].long())

@@ -98,7 +98,7 @@ class TFTv6(GenericDataFormatter):
     print('Formatting train-valid-test splits.')
 
     index = df['time_idx']
-    train = df.loc[index <= valid_boundary+pred_days]
+    train = df.loc[index <= valid_boundary+pred_days-1]
     #valid = df.loc[(index >= valid_boundary - his_days +1) & (index <= valid_boundary+pred_days)]
     valid = df.loc[0:0]
     test = df.loc[index >= test_boundary-his_days +1]
