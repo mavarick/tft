@@ -101,7 +101,8 @@ class TFT(nn.Module):
             embedding = nn.Embedding(self.category_counts[i], embedding_sizes[i])
             self.embeddings.append(embedding)
         
-        self.static_input_layer = nn.Linear(self.hidden_layer_size, self.hidden_layer_size)
+        #self.static_input_layer = nn.Linear(self.hidden_layer_size, self.hidden_layer_size)
+        self.static_input_layer = nn.Linear(1, self.hidden_layer_size)
         self.time_varying_embedding_layer = LinearLayer(input_size=1, size=self.hidden_layer_size, use_time_distributed=True, batch_first=self.batch_first)
 
         self.static_combine_and_mask = StaticCombineAndMask(

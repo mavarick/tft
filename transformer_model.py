@@ -591,7 +591,7 @@ class Encoder(nn.Module):
              range(num_layers)])
 
         # self.seq_embedding = nn.Embedding(vocab_size + 1, model_dim, padding_idx=0)
-        # self.pos_embedding = PositionalEncoding(model_dim, max_seq_len)
+        #self.pos_embedding = PositionalEncoding(model_dim, max_seq_len)
 
     def forward(self, inputs, attn_log=1, layer_norm=1):
         # output = self.seq_embedding(inputs)
